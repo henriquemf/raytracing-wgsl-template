@@ -1,3 +1,7 @@
+## Feito por:
+- Henrique M. Frezzatti
+- Nicolas Maciel Queiroga
+
 ## WGSL Raytracer Template
 Template básico de um Ray Tracer em WGSL (WEBGPU). Tudo o que precisa para fazer o projeto esta aqui.
 
