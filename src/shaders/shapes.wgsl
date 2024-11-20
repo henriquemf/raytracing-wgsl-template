@@ -1,39 +1,39 @@
 fn hit_sphere(center: vec3f, radius: f32, r: ray, record: ptr<function, hit_record>, max: f32)
 {
-    var oc = r.origin - center;
-    var a = dot(r.direction, r.direction);
-    var b = 2.0 * dot(oc, r.direction);
-    var c = dot(oc, oc) - radius * radius;
-
-    var discriminant = b * b - 4.0 * a * c;
+    let oc = r.origin - center;
+    let a = dot(r.direction, r.direction);
+    let half_b = dot(oc, r.direction);
+    let c = dot(oc, oc) - radius * radius; 
+    
+    let discriminant = half_b * half_b - a * c;
 
     if (discriminant < 0.0) {
         record.hit_anything = false;
         return;
     }
 
-    var sqrtd = sqrt(discriminant);
-
-    // Test the two roots, starting with the smaller
-    var t1 = (-b - sqrtd) / (2.0 * a);
-    var t2 = (-b + sqrtd) / (2.0 * a);
-
-    // Check the first root
-    var t = t1;
-    if (t < RAY_TMIN || t > max) {
-        // Check the second root if the first one is invalid
-        t = t2;
-        if (t < RAY_TMIN || t > max) {
+    let sqrtd = sqrt(discriminant);
+    
+    var root = (-half_b - sqrtd) / a;
+    
+    if (root < RAY_TMIN || root > max) {
+        root = (-half_b + sqrtd) / a;
+        if (root < RAY_TMIN || root > max) {
             record.hit_anything = false;
             return;
         }
     }
 
-    record.t = t;
-    record.p = ray_at(r, t);
-    record.normal = normalize(record.p - center);
+    record.t = root;
+    record.p = ray_at(r, root);
+    let outward_normal = (record.p - center) / radius;
+    
+    record.frontface = dot(r.direction, outward_normal) < 0.0;
+    record.normal = select(-outward_normal, outward_normal, record.frontface);
+    
     record.hit_anything = true;
 }
+
 
 fn hit_quad(r: ray, Q: vec4f, u: vec4f, v: vec4f, record: ptr<function, hit_record>, max: f32)
 {
