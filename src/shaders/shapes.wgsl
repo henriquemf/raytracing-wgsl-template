@@ -1,6 +1,38 @@
 fn hit_sphere(center: vec3f, radius: f32, r: ray, record: ptr<function, hit_record>, max: f32)
 {
+    var oc = r.origin - center;
+    var a = dot(r.direction, r.direction);
+    var b = 2.0 * dot(oc, r.direction);
+    var c = dot(oc, oc) - radius * radius;
 
+    var discriminant = b * b - 4.0 * a * c;
+
+    if (discriminant < 0.0) {
+        record.hit_anything = false;
+        return;
+    }
+
+    var sqrtd = sqrt(discriminant);
+
+    // Test the two roots, starting with the smaller
+    var t1 = (-b - sqrtd) / (2.0 * a);
+    var t2 = (-b + sqrtd) / (2.0 * a);
+
+    // Check the first root
+    var t = t1;
+    if (t < RAY_TMIN || t > max) {
+        // Check the second root if the first one is invalid
+        t = t2;
+        if (t < RAY_TMIN || t > max) {
+            record.hit_anything = false;
+            return;
+        }
+    }
+
+    record.t = t;
+    record.p = ray_at(r, t);
+    record.normal = normalize(record.p - center);
+    record.hit_anything = true;
 }
 
 fn hit_quad(r: ray, Q: vec4f, u: vec4f, v: vec4f, record: ptr<function, hit_record>, max: f32)
