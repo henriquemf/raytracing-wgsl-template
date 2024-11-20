@@ -36,6 +36,36 @@ async function Spheres(numSpheres = 4)
     };
 }
 
+async function EmissiveAndMetal() {
+    // Definindo a esfera de fundo e uma esfera metálica
+    let spheres = [
+        // Esfera de fundo com emissividade
+        new Sphere([0, -1001, 0], [0.5, 0.5, 0.5], 1000, [0.0, 0.0, 0.0, 0.0]),
+        // Esfera metálica com propriedades reflectivas
+        new Sphere([1.5, 0, -2], [0.7, 0.7, 0.7], 0.5, [1.0, 0.0, 1.0, 0.0]),
+        // Esfera emissiva vermelha
+        new Sphere([-1.5, 0, -2], [1.0, 0.0, 0.0], 0.5, [0.0, 0.0, 0.0, 5.0]), 
+        // Esfera branca com propriedades de reflexão (material metálico)
+        new Sphere([0.0, 1.5, -2], [1.0, 1.0, 1.0], 0.3, [1.0, 0.0, 1.0, 0.0]),
+    ];
+
+    return {
+        spheres, 
+        quads: [], 
+        boxes: [], 
+        triangles: [], 
+        meshes: [], 
+        backgroundColor1: [0.0, 0.0, 0.0], 
+        backgroundColor2: [0.0, 0.0, 0.0],
+        focusDistance: 5.0, 
+        focusAngle: 0.1,
+        sunIntensity: 1.0,
+        samplesPerPixel: 1.0,
+        maxBounces: 10.0
+    };
+}
+
+
 async function Night()
 {
     let { spheres, quads, boxes, triangles, meshes, backgroundColor1, backgroundColor2 } = await Spheres();
