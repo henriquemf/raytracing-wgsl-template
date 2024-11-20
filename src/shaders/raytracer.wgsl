@@ -151,82 +151,99 @@ fn environment_color(direction: vec3f, color1: vec3f, color2: vec3f) -> vec3f
   return col;
 }
 
-fn check_ray_collision(r: ray, max: f32) -> hit_record
-{
-  var spheresCount = i32(uniforms[19]);
-  var quadsCount = i32(uniforms[20]);
-  var boxesCount = i32(uniforms[21]);
-  var trianglesCount = i32(uniforms[22]);
-  var meshCount = i32(uniforms[27]);
+fn check_ray_collision(ray: ray, max_distance: f32) -> hit_record {
+    // Obtain the number of different object types from uniforms (uniforms contain the count of objects)
+    var num_spheres = i32(uniforms[19]);
+    var num_quads = i32(uniforms[20]);
+    var num_boxes = i32(uniforms[21]);
+    var num_triangles = i32(uniforms[22]);
+    var num_meshes = i32(uniforms[27]);
 
-  var record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), vec4f(0.0), vec4f(0.0), false, false);
-  var closest = record;
+    // Initialize the collision record to store the closest intersection found
+    var initial_record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), vec4f(0.0), vec4f(0.0), false, false);
+    var closest_intersection = initial_record;
+    var closest_distance = max_distance;  // Keep track of the closest intersection distance
 
-  for (var i = 0; i < spheresCount; i = i + 1) {
-    var sphere = spheresb[i];
-    hit_sphere(sphere.transform.xyz, sphere.transform.w, r, &record, max);
-    
-    if (record.hit_anything && record.t < closest.t) {
-        closest = record;
-        closest.object_color = sphere.color;
-        closest.object_material = sphere.material;
-    }
-  }
-
-  // Check for sphere collisions
-    for (var i = 0; i < spheresCount; i = i + 1) {
-        var sphere = spheresb[i];
-        var temp_record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), vec4f(0.0), vec4f(0.0), false, false);
-        hit_sphere(sphere.transform.xyz, sphere.transform.w, r, &temp_record, max);
+    // Iterate over all spheres and check for collisions
+    for(var i = 0; i < num_spheres; i++) {
+        var current_sphere = spheresb[i];
+        var temp_record = initial_record;
         
-        if (temp_record.hit_anything && temp_record.t < closest.t) {
-            closest = temp_record;
-            closest.object_color = sphere.color;
-            closest.object_material = sphere.material;
+        // Check if the ray intersects the sphere and update the collision record
+        hit_sphere(current_sphere.transform.xyz, current_sphere.transform.w, ray, &temp_record, closest_distance);
+        
+        if(temp_record.hit_anything) {
+            closest_distance = temp_record.t;
+            temp_record.object_color = current_sphere.color;
+            temp_record.object_material = current_sphere.material;
+            closest_intersection = temp_record;
         }
     }
 
-    // Check for quad collisions
-    for (var i = 0; i < quadsCount; i = i + 1) {
-        var quad = quadsb[i];
-        var temp_record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), quad.color, quad.material, false, true);
-        hit_quad(r, quad.Q, quad.u, quad.v, &temp_record, max);
+    // Iterate over all quads and check for collisions
+    for(var i = 0; i < num_quads; i++) {
+        var current_quad = quadsb[i];
+        var temp_record = initial_record;
         
-        if (temp_record.hit_anything && temp_record.t < closest.t) {
-            closest = temp_record;
-            closest.object_color = quad.color;
-            closest.object_material = quad.material;
+        // Check if the ray intersects the quad and update the collision record
+        hit_quad(ray, current_quad.Q, current_quad.u, current_quad.v, &temp_record, closest_distance);
+        
+        if(temp_record.hit_anything) {
+            closest_distance = temp_record.t;
+            temp_record.object_color = current_quad.color;
+            temp_record.object_material = current_quad.material;
+            closest_intersection = temp_record;
         }
     }
 
-    // Check for box collisions
-    for (var i = 0; i < boxesCount; i = i + 1) {
-        var box = boxesb[i];
-        var temp_record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), box.color, box.material, false, true);
-        hit_box(r, box.center.xyz, box.radius.xyz, &temp_record, max);
+    // Iterate over all boxes and check for collisions
+    for(var i = 0; i < num_boxes; i++) {
+        var current_box = boxesb[i];
+        var temp_record = initial_record;
         
-        if (temp_record.hit_anything && temp_record.t < closest.t) {
-            closest = temp_record;
-            closest.object_color = box.color;
-            closest.object_material = box.material;
+        // Check if the ray intersects the box and update the collision record
+        hit_box(ray, current_box.center.xyz, current_box.radius.xyz, &temp_record, closest_distance);
+        
+        if(temp_record.hit_anything) {
+            closest_distance = temp_record.t;
+            temp_record.object_color = current_box.color;
+            temp_record.object_material = current_box.material;
+            closest_intersection = temp_record;
         }
     }
 
-    // Check for triangle collisions
-    for (var i = 0; i < trianglesCount; i = i + 1) {
-        var triangle = trianglesb[i];
-        var temp_record = hit_record(RAY_TMAX, vec3f(0.0), vec3f(0.0), vec4f(1.0), vec4f(1.0), false, true);
-        hit_triangle(r, triangle.v0.xyz, triangle.v1.xyz, triangle.v2.xyz, &temp_record, max);
-        
-        if (temp_record.hit_anything && temp_record.t < closest.t) {
-            closest = temp_record;
-            closest.object_color = vec4f(1.0); // Supondo uma cor padrão para triângulos
-            closest.object_material = vec4f(1.0); // Supondo um material padrão
+    // Iterate over all meshes and check for collisions with the triangles they contain
+    for(var i = 0; i < num_meshes; i++) {
+        var current_mesh = meshb[i];
+
+        if(current_mesh.show_bb <= 0.0) {
+            // Check each triangle in the mesh for a collision
+            for(var j = i32(current_mesh.start); j < i32(current_mesh.end); j++) {
+                var current_triangle = trianglesb[j];
+                var temp_record = initial_record;
+                
+                // Transform the triangle vertices based on the mesh's scale and transformation
+                var v0 = current_triangle.v0.xyz * current_mesh.scale.xyz + current_mesh.transform.xyz;
+                var v1 = current_triangle.v1.xyz * current_mesh.scale.xyz + current_mesh.transform.xyz;
+                var v2 = current_triangle.v2.xyz * current_mesh.scale.xyz + current_mesh.transform.xyz;
+                
+                // Check if the ray intersects the triangle and update the collision record
+                hit_triangle(ray, v0, v1, v2, &temp_record, closest_distance);
+                
+                if(temp_record.hit_anything && temp_record.t < closest_intersection.t) {
+                    closest_distance = temp_record.t;
+                    temp_record.object_color = current_mesh.color;
+                    temp_record.object_material = current_mesh.material;
+                    closest_intersection = temp_record;
+                }
+            }
         }
     }
 
-  return closest;
+    // Return the closest intersection record
+    return closest_intersection;
 }
+
 
 fn lambertian(normal : vec3f, absorption: f32, random_sphere: vec3f, rng_state: ptr<function, u32>) -> material_behaviour
 {
